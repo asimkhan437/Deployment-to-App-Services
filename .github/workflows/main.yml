@@ -14,7 +14,7 @@ env:
   WORKING_DIR: src
   BUILD_CONFIG: Debug
   PROJECT_FILE: RazType.csproj # `dotnet publish` requires the does not work when specifying the .sln file
-  APPSERVICE_NAME: name: asimkhan
+  APPSERVICE_NAME: asimkhan 
 
 on:
   push:
