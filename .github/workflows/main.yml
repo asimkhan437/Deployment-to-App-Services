@@ -1,31 +1,85 @@
+trigger:
+  branches:
+    include:
+      - '*'
+
+variables:
+  buildConfiguration: 'Release'
+  dotnetSdkVersion: '5.0.301'
+
 stages:
-- stage: buildandtest
-  jobs:
-  - job: buildandtest
-  pool:
-    vmImage: vs2017-win2016
- on: push
-  steps:
-  # publish an artifact called drop
-  - task: PublishPipelineArtifact@1
-    inputs:
-      targetPath: '$(Build.ArtifactStagingDirectory)' 
-      artifactName: drop
-  
-  # deploy to Azure Web App staging
-  - task: AzureWebApp@1
-    inputs:
-      azureSubscription: '882939ed-a914-4c3c-8161-a98856cc86f2'
-      appType: Windows
-      appName: 'asimkhan'
-      deployToSlotOrASE: true
-      resourceGroupName: abcd
-      slotName: 'production'
-      package: '$(Build.ArtifactStagingDirectory)/**/*.zip'
+ - stage: 'Build'
+   displayName: 'Build the app'
+   jobs:
+    - job:
+      displayName: 'Build job'
+      pool:
+        vmImage: 'windows-latest'
 
-- job: deploy
-  dependsOn: buildandtest
-  condition: succeeded()
+      steps:
+        - task: UseDotNet@2
+          displayName: 'Use .NET Core SDK $(dotnetSdkVersion)'
+          inputs:
+            version: '$(dotnetSdkVersion)'
 
-  pool: 
-    vmImage: vs2017-win2016
+        - task: NuGetToolInstaller@1
+          displayName: 'Use nuget'
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Restore app dependencies'
+          inputs:
+            command: 'restore'
+            projects: '**/*.csproj'
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Build the app - $(buildConfiguration)'
+          inputs:
+            command: 'build'
+            arguments: '--no-restore --configuration $(buildConfiguration)'
+            projects: '**/*.csproj'
+
+        - task: DotNetCoreCLI@2
+          displayName: 'Publish the app - $(buildConfiguration)'
+          inputs:
+            command: publish
+            projects: '**/*.csproj'
+            publishWebProjects: False
+            arguments: '--no-build --configuration $(BuildConfiguration) --output $(Build.StagingDirectory)/$(buildConfiguration)'
+            zipAfterPublish: True
+
+        - task: PublishBuildArtifacts@1
+          displayName: 'Publish the build artefacts'
+          condition: succeeded()
+
+ - stage: 'Deploy'
+   displayName: 'Deploy the app'
+   dependsOn: Build
+   jobs:
+    - job:
+      displayName: 'Deploy job'
+      pool:
+        vmImage: 'windows-latest'
+
+      steps:
+        - task: AzureResourceManagerTemplateDeployment@3
+          displayName: 'Provision Azure resources'
+          inputs:
+            deploymentScope: 'Subscription'
+            azureResourceManagerConnection: 'Visual Studio Ultimate with MSDN'
+            location: 'Central India'
+            templateLocation: 'Linked artifact'
+            csmFile: '$(Build.SourcesDirectory)/scripts/azuredeploy.json'
+            deploymentMode: 'Incremental'
+
+        - task: DownloadPipelineArtifact@2
+          displayName: 'Download the build artefacts'
+          inputs:
+            buildType: current
+            artifact: 'drop'
+
+        - task: AzureWebApp@1
+          displayName: 'Deploy the packaged app to Azure web app'
+          inputs:
+            azureSubscription: '882939ed-a914-4c3c-8161-a98856cc86f2'
+            appName: 'asimkhan'
+            package: '$(Pipeline.Workspace)/$(buildConfiguration)/*.zip'
