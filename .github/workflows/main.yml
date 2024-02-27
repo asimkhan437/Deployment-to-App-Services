@@ -1,5 +1,7 @@
-jobs:
-- job: buildandtest
+stages:
+- stage: buildandtest
+  jobs:
+  - job: buildandtest
   pool:
     vmImage: ubuntu-latest
  
