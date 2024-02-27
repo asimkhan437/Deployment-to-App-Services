@@ -1,16 +1,29 @@
-variables:
-  buildConfiguration: 'Release'
-on: push
-steps:
-- script: dotnet build --configuration $(buildConfiguration)
-  displayName: 'dotnet build $(buildConfiguration)'
-- task: DotNetCoreCLI@2
-  inputs:
-    command: 'publish'
-    publishWebProjects: true
-- task: AzureWebApp@1
-  inputs:
-    azureSubscription: '882939ed-a914-4c3c-8161-a98856cc86f2'
-    appType: 'webAppWindows'
-    appName: 'asimkhan'
-    package: '$(System.DefaultWorkingDirectory)/**/*.zip'
+jobs:
+- job: buildandtest
+  pool:
+    vmImage: ubuntu-latest
+ 
+  steps:
+  # publish an artifact called drop
+  - task: PublishPipelineArtifact@1
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)' 
+      artifactName: drop
+  
+  # deploy to Azure Web App staging
+  - task: AzureWebApp@1
+    inputs:
+      azureSubscription: '882939ed-a914-4c3c-8161-a98856cc86f2'
+      appType: Windows
+      appName: 'asimkhan'
+      deployToSlotOrASE: true
+      resourceGroupName: abcd
+      slotName: 'production'
+      package: '$(Build.ArtifactStagingDirectory)/**/*.zip'
+
+- job: deploy
+  dependsOn: buildandtest
+  condition: succeeded()
+
+  pool: 
+    vmImage: ubuntu-latest  
