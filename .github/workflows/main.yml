@@ -1,51 +1,43 @@
-name: workflow to Create an Azure Web app, build and deploy Docker app to the Azure app
-
-on: push
-
+# Go on Linux Web App
+# Build a Go project and deploy it to Azure as a Linux web app.
+name: Deploy Go package to Azure Web App as a Linux web app.
+on:
+  [push]
 # CONFIGURATION
 # For help, go to https://github.com/Azure/Actions
 #
-# Set up the following secrets in your repository:
-#   AZURE_CREDENTIALS, REGISTRY_USERNAME, REGISTRY_PASSWORD, AZURE_DEVOPS_TOKEN
+# 1. Set up the following secrets in your repository:
+#   AZURE_PUBLISH_PROFILE
+#
 # 2. Change these variables for your configuration:
 env:
-  AZURE_RESOURCE_GROUP: ActionsDemo   # set this to your Azure Resource group's name  
-  AZURE_WEBAPP_NAME: AppWithContainer1   # set this to your application's name
-  AZURE_APP_PLAN: ActionPlan  # set this to your App service plan's name
-  CONTAINER_REGISTRY: actionregistry.azurecr.io   # set this to Container Registry name
+  AZURE_WEBAPP_NAME: asimk # set this to your application's name
+  WORKING_DIRECTORY: '.'        # set this to the path to your path of working directory inside github repository, defaults to the repository root
+  GO_VERSION: '1.18'            # set this to your application's go version
 
 jobs:
-  build-and-deploy-to-dev:
-    runs-on: ubuntu-latest
-    environment: dev
-    steps:
-    - uses: actions/checkout@master
-            
-   # Authentication
-    - uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS  }}
-    - uses: azure/docker-login@v1
-      with:
-        login-server: ${{ env.CONTAINER_REGISTRY }}
-        username: ${{ secrets.REGISTRY_USERNAME }}
-        password: ${{ secrets.REGISTRY_PASSWORD }}
-    
-    # Authentication
-    - run: |
-        docker build . -t ${{ env.CONTAINER_REGISTRY }}/app:latest
-        docker push ${{ env.CONTAINER_REGISTRY }}/app:latest
-        
-    # Provision a new Web App
-    - name: Azure CLI script to create a new Web App for Container
-      uses: azure/CLI@v1
-      with:
-        azcliversion: latest
-        inlineScript: |
-          az account show
-          az webapp create --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --plan ${{ env.AZURE_APP_PLAN }} --name ${{ env.AZURE_WEBAPP_NAME }}  -i nginx
-          
-    - uses: azure/webapps-container-deploy@v1
-      with: 
-        app-name: ${{ env.AZURE_WEBAPP_NAME }} 
-        images: '${{ env.CONTAINER_REGISTRY }}/app:latest'
+ build-and-deploy:
+  runs-on: ubuntu-latest
+  environment: production
+  steps:
+  # checkout the repo 
+  - uses: actions/checkout@v3
+  # setup Go
+  - name: Setup Go
+    uses: actions/setup-go@v3
+    with:
+     go-version: ${{ env.GO_VERSION }}
+  - run: go version
+  # install dependencies
+  - name: go build
+    working-directory: ${{ env.WORKING_DIRECTORY }}
+    run: |
+     go build
+  - name: 'Deploy to Azure Web App'
+    id: deploy-to-webapp
+    uses: azure/webapps-deploy@v2
+    with:
+      app-name: ${{ env.AZURE_WEBAPP_NAME }}
+      slot-name: 'Production'
+      publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE}}
+      package: .
