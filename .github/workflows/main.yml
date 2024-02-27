@@ -3,7 +3,7 @@ stages:
   jobs:
   - job: buildandtest
   pool:
-    vmImage: windows-latest
+    vmImage: vs2017-win2016
  on: push
   steps:
   # publish an artifact called drop
@@ -28,4 +28,4 @@ stages:
   condition: succeeded()
 
   pool: 
-    vmImage: windows-latest  
+    vmImage: vs2017-win2016
