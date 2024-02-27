@@ -4,7 +4,7 @@ stages:
   - job: buildandtest
   pool:
     vmImage: ubuntu-latest
- 
+ on: push
   steps:
   # publish an artifact called drop
   - task: PublishPipelineArtifact@1
