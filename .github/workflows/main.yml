@@ -3,7 +3,7 @@ stages:
   jobs:
   - job: buildandtest
   pool:
-    vmImage: ubuntu-latest
+    vmImage: windows-latest
  on: push
   steps:
   # publish an artifact called drop
@@ -28,4 +28,4 @@ stages:
   condition: succeeded()
 
   pool: 
-    vmImage: ubuntu-latest  
+    vmImage: windows-latest  
