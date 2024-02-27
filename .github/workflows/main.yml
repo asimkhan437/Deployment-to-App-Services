@@ -26,7 +26,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version:  ${{ env.NODE_VERSION }}
+          
+        - name: npm
+        npm cache clean -f
+        rm -rf node_modules
+        npm i
 
+        
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v3
         with:
